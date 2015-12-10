@@ -59,9 +59,25 @@ add_executable(ar_multi
 target_link_libraries(ar_multi
 	${catkin_LIBRARIES}
 )
+
+add_executable(ar_multi_outlier_detection 
+		src/ar_multi_outlier_detection.cpp 
+		src/object.cpp 
+		src/outlier_detection.cpp
+		)
+
+target_link_libraries(ar_multi_outlier_detection 
+	${catkin_LIBRARIES}
+	)
+
 add_dependencies(ar_multi
 	${PROJECT_NAME}_generate_messages_cpp
 	${artoolkit_EXPORTED_TARGETS}
+)
+
+add_dependencies(ar_multi_outlier_detection
+  ${PROJECT_NAME}_generate_messages_cpp
+  ${artoolkit_EXPORTED_TARGETS}
 )
 
 install(TARGETS ar_single
