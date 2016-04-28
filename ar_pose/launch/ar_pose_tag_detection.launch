@@ -3,7 +3,7 @@
   <arg name="mav_name" default="tupac" />
   <arg name="camera_calib_file" value="$(find rpg_calib)/cameras/bluefox_$(env CAMERA_SERIAL_NR)_pinhole.yaml"/>
 
-  <!-- april tag cpp node -->
+  <!-- ar pose cpp node -->
   <group ns="$(arg mav_name)">
 
     <node name="ar_pose" pkg="ar_pose" type="ar_single" respawn="false" output="screen">
