@@ -36,7 +36,7 @@ int main (int argc, char **argv)
 namespace ar_pose
 {
   ARSinglePublisher::ARSinglePublisher (ros::NodeHandle & n)
-  :n_ (n), it_ (n_),
+  :n_ (n), it_ (n_), contF(0),
   cameraMatrix(3, 3, CV_64F),
   distCoeffs(1, 4, CV_64F)
   {
@@ -397,6 +397,19 @@ namespace ar_pose
     }
     else
     {
+      geometry_msgs::PoseStamped tag_pose_;
+      tag_pose_.header.frame_id = markerFrame_.c_str();
+		  tag_pose_.header.stamp    = image_msg->header.stamp;
+		  tag_pose_.pose.position.x = 0;
+		  tag_pose_.pose.position.y = 0;
+		  tag_pose_.pose.position.z = 0;
+		  tag_pose_.pose.orientation.x = 0;
+		  tag_pose_.pose.orientation.y = 0;
+		  tag_pose_.pose.orientation.z = 0;
+		  tag_pose_.pose.orientation.w = 0;
+      tagPosePub_.publish(tag_pose_);
+      ROS_DEBUG ("Published ar_pose tag");
+
       contF = 0;
       ROS_DEBUG ("Failed to locate marker");
     }
