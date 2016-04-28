@@ -39,7 +39,7 @@ namespace ar_pose
   {
     std::string local_path;
     std::string package_path = ros::package::getPath (ROS_PACKAGE_NAME);
-	std::string default_path = "data/patt.hiro";
+	  std::string default_path = "data/patt.hiro";
     ros::NodeHandle n_param ("~");
     XmlRpc::XmlRpcValue xml_marker_center;
 
@@ -98,15 +98,60 @@ namespace ar_pose
     ROS_INFO ("\tMarker Center: (%.1f,%.1f)", marker_center_[0], marker_center_[1]);
 
     // **** subscribe
+    bool use_camera_info;
+    n_param.param ("use_camera_info", use_camera_info, false);
+    if (!use_camera_info)
+    {
+      int cam_w,cam_h;
+      n_param.param ("cam_width", cam_w, 752);
+      n_param.param ("cam_height", cam_h, 480);
+      cam_param_.xsize = cam_w;
+      cam_param_.ysize = cam_h;
 
-    ROS_INFO ("Subscribing to info topic");
-    sub_ = n_.subscribe (cameraInfoTopic_, 1, &ARSinglePublisher::camInfoCallback, this);
-    getCamInfo_ = false;
-    
-    // **** advertsie 
+      double fx,fy,px,py;
+      n_param.param("cam_fx", fx, 485.6);
+      n_param.param("cam_fy", fy, fx);
+      n_param.param("cam_cx", px, 319.5);
+      n_param.param("cam_cy", py, 239.5);
+      cam_param_.mat[0][0] = fx;
+      cam_param_.mat[1][0] = 0.0;
+      cam_param_.mat[2][0] = 0.0;
+      cam_param_.mat[0][1] = 0.0;
+      cam_param_.mat[1][1] = fy;
+      cam_param_.mat[2][1] = 0.0;
+      cam_param_.mat[0][2] = px;
+      cam_param_.mat[1][2] = py;
+      cam_param_.mat[2][2] = 0.0;
+      cam_param_.mat[0][3] = 0.0;
+      cam_param_.mat[1][3] = 0.0;
+      cam_param_.mat[2][3] = 0.0;
 
+      double cam_d0,cam_d1,cam_d2,cam_d3;
+      n_param.param("cam_d0", cam_d0, 0.0);
+      n_param.param("cam_d1", cam_d1, 0.0);
+      n_param.param("cam_d2", cam_d2, 0.0);
+      n_param.param("cam_d3", cam_d3, 0.0);
+	    cam_param_.dist_factor[0] = cam_d0;       // x0 = cX from openCV calibration
+      cam_param_.dist_factor[1] = cam_d1;       // y0 = cY from openCV calibration
+      cam_param_.dist_factor[2] = cam_d2;
+      cam_param_.dist_factor[3] = cam_d3;       // scale factor, should probably be >1, but who cares...
+
+      arInit();
+      getCamInfo_ = true;
+    }
+    else
+    {
+      ROS_INFO ("Subscribing to info topic");
+      sub_ = n_.subscribe (cameraInfoTopic_, 1, &ARSinglePublisher::camInfoCallback, this);
+      getCamInfo_ = false;
+    }
+
+    ROS_INFO ("Subscribing to image topic");
+    cam_sub_ = it_.subscribe (cameraImageTopic_, 1, &ARSinglePublisher::getTransformationCallback, this);
+
+    // **** advertsie
     arMarkerPub_   = n_.advertise<ar_pose::ARMarker>("ar_pose_marker", 0);
-    if(publishVisualMarkers_){ 
+    if(publishVisualMarkers_){
 		rvizMarkerPub_ = n_.advertise<visualization_msgs::Marker>("visualization_marker", 0);
 	 }
   }
@@ -126,7 +171,7 @@ namespace ar_pose
 
       cam_param_.xsize = cam_info_.width;
       cam_param_.ysize = cam_info_.height;
-      
+
       cam_param_.mat[0][0] = cam_info_.P[0];
       cam_param_.mat[1][0] = cam_info_.P[4];
       cam_param_.mat[2][0] = cam_info_.P[8];
@@ -139,7 +184,7 @@ namespace ar_pose
       cam_param_.mat[0][3] = cam_info_.P[3];
       cam_param_.mat[1][3] = cam_info_.P[7];
       cam_param_.mat[2][3] = cam_info_.P[11];
-     
+
 	  cam_param_.dist_factor[0] = cam_info_.K[2];       // x0 = cX from openCV calibration
       cam_param_.dist_factor[1] = cam_info_.K[5];       // y0 = cY from openCV calibration
       if ( cam_info_.distortion_model == "plumb_bob" && cam_info_.D.size() == 5)
@@ -148,17 +193,15 @@ namespace ar_pose
         cam_param_.dist_factor[2] = 0;                  // We don't know the right value, so ignore it
 
       cam_param_.dist_factor[3] = 1.0;                  // scale factor, should probably be >1, but who cares...
-	     
+
       arInit();
 
-      ROS_INFO ("Subscribing to image topic");
-      cam_sub_ = it_.subscribe (cameraImageTopic_, 1, &ARSinglePublisher::getTransformationCallback, this);
       getCamInfo_ = true;
     }
   }
 
   void ARSinglePublisher::arInit ()
-  {   
+  {
     arInitCparam (&cam_param_);
 
     ROS_INFO ("*** Camera Parameter ***");
@@ -193,7 +236,7 @@ namespace ar_pose
 
     /* Get the image from ROSTOPIC
      * NOTE: the dataPtr format is BGR because the ARToolKit library was
-     * build with V4L, dataPtr format change according to the 
+     * build with V4L, dataPtr format change according to the
      * ARToolKit configure option (see config.h).*/
 #if ROS_VERSION_MINIMUM(1, 9, 0)
     try
@@ -217,7 +260,7 @@ namespace ar_pose
     dataPtr = (ARUint8 *) capture_->imageData;
 #endif
 
-    // detect the markers in the video frame 
+    // detect the markers in the video frame
     if (arDetectMarker (dataPtr, threshold_, &marker_info, &marker_num) < 0)
     {
       ROS_FATAL ("arDetectMarker failed");
@@ -258,7 +301,7 @@ namespace ar_pose
       // **** convert to ROS frame
 
       double quat[4], pos[3];
-    
+
       pos[0] = arPos[0] * AR_TO_ROS;
       pos[1] = arPos[1] * AR_TO_ROS;
       pos[2] = arPos[2] * AR_TO_ROS;
@@ -285,12 +328,12 @@ namespace ar_pose
 		  ar_pose_marker_.pose.pose.orientation.y = quat[1];
 		  ar_pose_marker_.pose.pose.orientation.z = quat[2];
 		  ar_pose_marker_.pose.pose.orientation.w = quat[3];
-		
+
 		  ar_pose_marker_.confidence = marker_info->cf;
 
 		  arMarkerPub_.publish(ar_pose_marker_);
 		  ROS_DEBUG ("Published ar_single marker");
-		
+
       // **** publish transform between camera and marker
 
 #if ROS_VERSION_MINIMUM(1, 9, 0)
@@ -332,7 +375,7 @@ namespace ar_pose
         btTransform markerPose = t * m; // marker pose in the camera frame
 #endif
 
-      
+
         tf::poseTFToMsg(markerPose, rvizMarker_.pose);
 
 			  rvizMarker_.header.frame_id = image_msg->header.frame_id;
@@ -350,7 +393,7 @@ namespace ar_pose
 			  rvizMarker_.color.b = 0.0f;
 			  rvizMarker_.color.a = 1.0;
 			  rvizMarker_.lifetime = ros::Duration(1.0);
-			
+
 			  rvizMarkerPub_.publish(rvizMarker_);
 			  ROS_DEBUG ("Published visual marker");
       }
@@ -362,4 +405,3 @@ namespace ar_pose
     }
   }
 }                               // end namespace ar_pose
-
