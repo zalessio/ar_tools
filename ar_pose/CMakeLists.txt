@@ -60,13 +60,13 @@ target_link_libraries(ar_multi
 	${catkin_LIBRARIES}
 )
 
-add_executable(ar_multi_outlier_detection 
-		src/ar_multi_outlier_detection.cpp 
-		src/object.cpp 
+add_executable(ar_multi_outlier_detection
+		src/ar_multi_outlier_detection.cpp
+		src/object.cpp
 		src/outlier_detection.cpp
 		)
 
-target_link_libraries(ar_multi_outlier_detection 
+target_link_libraries(ar_multi_outlier_detection
 	${catkin_LIBRARIES}
 	)
 

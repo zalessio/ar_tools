@@ -60,8 +60,8 @@
 
 #include <ar_pose/ARMarker.h>
 
-const std::string cameraImageTopic_ = "/camera/image_raw";
-const std::string cameraInfoTopic_  = "/camera/camera_info";
+const std::string cameraImageTopic_ = "camera/image_raw";
+const std::string cameraInfoTopic_  = "camera/camera_info";
 
 const double AR_TO_ROS = 0.001;
 
@@ -86,9 +86,6 @@ namespace ar_pose
     ar_pose::ARMarker ar_pose_marker_;
     image_transport::ImageTransport it_;
     image_transport::Subscriber cam_sub_;
-#if ! ROS_VERSION_MINIMUM(1, 9, 0)
-    sensor_msgs::CvBridge bridge_;
-#endif
     sensor_msgs::CameraInfo cam_info_;
 
     // **** parameters
@@ -109,19 +106,18 @@ namespace ar_pose
     double marker_center_[2];   // Physical Center of the Marker
     double marker_trans_[3][4]; // Marker Transform
 
+    cv::Mat cameraMatrix;
+    cv::Mat distCoeffs;
+
     // **** for visualisation in rviz
     ros::Publisher rvizMarkerPub_;
+    ros::Publisher tagPosePub_;
     visualization_msgs::Marker rvizMarker_;
-    
+
     int contF;
     bool getCamInfo_;
     CvSize sz_;
-#if ROS_VERSION_MINIMUM(1, 9, 0)
     cv_bridge::CvImagePtr capture_;
-#else
-    IplImage *capture_;
-#endif
-
   };                            // end class ARSinglePublisher
 }                               // end namespace ar_pose
 
