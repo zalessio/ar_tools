@@ -25,13 +25,16 @@
 #ifndef AR_POSE_AR_SINGLE_H
 #define AR_POSE_AR_SINGLE_H
 
+//GENERAL
 #include <string.h>
 #include <stdarg.h>
 
+//AR TOOL KIT
 #include <artoolkit/AR/param.h>
 #include <artoolkit/AR/ar.h>
 #include <artoolkit/AR/video.h>
 
+//ROS
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <ros/console.h>
@@ -40,28 +43,23 @@
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <visualization_msgs/Marker.h>
-#include <resource_retriever/retriever.h>
+#include <ar_pose/ARMarker.h>
 
+//OPENCV
 #include <opencv/cv.h>
 #include <opencv/highgui.h>
 
-#if ROS_VERSION_MINIMUM(1, 9, 0)
-  // new cv_bridge API in Groovy
-  #include <cv_bridge/cv_bridge.h>
-  #include <sensor_msgs/image_encodings.h>
-#else
-  // Fuerte support for cv_bridge will be deprecated
-  #if defined(__GNUC__)
-    #warning "Support for the old cv_bridge API (Fuerte) is derecated and will be removed when Hydro is released."
-  #endif
-  #include <cv_bridge/CvBridge.h>
-#endif
+//new cv_bridge API in Groovy
+#include <cv_bridge/cv_bridge.h>
+#include <sensor_msgs/image_encodings.h>
 
+//Vikit for camera calibration
+#include <vikit/cameras/camera_geometry_base.h>
+#include <vikit/cameras/ncamera.h>
+#include <vikit/cameras/pinhole_projection.h>
+#include <vikit/cameras/radial_tangential_distortion.h>
+#include <vikit/params_helper.h>
 
-#include <ar_pose/ARMarker.h>
-
-const std::string cameraImageTopic_ = "camera/image_raw";
-const std::string cameraInfoTopic_  = "camera/camera_info";
 
 const double AR_TO_ROS = 0.001;
 
@@ -74,29 +72,31 @@ namespace ar_pose
     ~ARSinglePublisher (void);
 
   private:
-    void arInit ();
+    void arInit();
+    bool loadCameraParameters(const std::string& camera_calib_file);
     void getTransformationCallback (const sensor_msgs::ImageConstPtr &);
     void camInfoCallback (const sensor_msgs::CameraInfoConstPtr &);
 
     ros::NodeHandle n_;
-    ros::Subscriber sub_;
+    ros::Publisher pub_tag_pose_;
+    ros::Publisher pub_camera_pose_;
     tf::TransformBroadcaster broadcaster_;
-    ros::Publisher arMarkerPub_;
+    tf::Transform  transform_quad_camera_
 
     ar_pose::ARMarker ar_pose_marker_;
     image_transport::ImageTransport it_;
-    image_transport::Subscriber cam_sub_;
+    image_transport::Subscriber sub_image_;
+    ros::Subscriber sub_camera_info_;
     sensor_msgs::CameraInfo cam_info_;
 
     // **** parameters
-
-    //std::string cameraFrame_;
-    std::string markerFrame_;
-    bool publishTf_;
-    bool publishVisualMarkers_;
-    bool useHistory_;
+    std::string camera_frame_;
+    std::string marker_frame_;
+    bool publish_tf_;
+    bool publish_visual_markers_;
+    bool use_history_;
     int threshold_;
-    double markerWidth_;        // Size of the AR Marker in mm
+    double marker_width_;        // Size of the AR Marker in mm
 
     ARParam cam_param_;         // Camera Calibration Parameters
     int patt_id_;               // AR Marker Pattern
@@ -106,17 +106,17 @@ namespace ar_pose
     double marker_center_[2];   // Physical Center of the Marker
     double marker_trans_[3][4]; // Marker Transform
 
-    cv::Mat cameraMatrix;
-    cv::Mat distCoeffs;
+    cv::Mat camera_matrix_;
+    cv::Mat dist_coeffs_;
 
     // **** for visualisation in rviz
-    ros::Publisher rvizMarkerPub_;
-    ros::Publisher tagPosePub_;
+    ros::Publisher pub_rviz_marker;
+    ros::Publisher arMarkerPub_;
     visualization_msgs::Marker rvizMarker_;
 
-    int contF;
-    bool getCamInfo_;
-    CvSize sz_;
+    bool marker_prev_visualized_;
+    bool get_camera_info_;
+    cv::Size sz_;
     cv_bridge::CvImagePtr capture_;
   };                            // end class ARSinglePublisher
 }                               // end namespace ar_pose
